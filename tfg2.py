@@ -1,76 +1,119 @@
 import os
-import pandas as pd
-from flask import Flask, request, jsonify
-from datetime import datetime
+import pyodbc
 import subprocess
-import logging
+from flask import Flask, request
+from datetime import datetime
+from dotenv import load_dotenv
+
+# ============================
+# 🔐 LOAD ENV
+# ============================
+load_dotenv()
+
+DB_SERVER = "raghav-traffic-server.database.windows.net"
+DB_NAME = "trafficdb"
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
 
 app = Flask(__name__)
 
-# 🔥 Use /tmp for cloud safety (Render/Azure)
-DATA_FILE = os.path.join("/tmp", "live_traffic.csv")
+# ============================
+# 🔥 DB CONNECTION
+# ============================
+conn_str = (
+    "DRIVER={ODBC Driver 18 for SQL Server};"
+    f"SERVER={DB_SERVER};"
+    f"DATABASE={DB_NAME};"
+    f"UID={DB_USER};"
+    f"PWD={DB_PASSWORD};"
+    "Encrypt=yes;"
+    "TrustServerCertificate=yes;"
+)
 
-# 🔥 Logging (important for debugging + DevOps)
-logging.basicConfig(level=logging.INFO)
+# ============================
+# 🔥 INSERT DATA
+# ============================
+def insert_into_db(data):
+    conn = pyodbc.connect(conn_str)
+    cursor = conn.cursor()
 
-# Create CSV if not exists
-if not os.path.exists(DATA_FILE):
-    df = pd.DataFrame(columns=[
-        "time", "location", "vehicle_density",
-        "avg_speed", "weather_code", "distance", "risk_level"
-    ])
-    df.to_csv(DATA_FILE, index=False)
+    cursor.execute("""
+    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='traffic' AND xtype='U')
+    CREATE TABLE traffic (
+        time VARCHAR(50),
+        location VARCHAR(10),
+        vehicle_density INT,
+        avg_speed INT,
+        weather_code INT,
+        distance FLOAT,
+        risk_level VARCHAR(10)
+    )
+    """)
+    conn.commit()
 
+    cursor.execute("""
+    INSERT INTO traffic VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        data.get("location"),
+        data.get("vehicle_density"),
+        data.get("avg_speed"),
+        data.get("weather_code"),
+        data.get("distance"),
+        data.get("risk_level")
+    ))
+
+    conn.commit()
+    conn.close()
+    print("✅ Data inserted into Azure")
+
+# ============================
+# 🔥 RUN SPARK
+# ============================
+def run_spark():
+    try:
+        subprocess.run(["python", "aspark.py"], check=True)
+        print("🔥 Spark executed")
+    except Exception as e:
+        print("❌ Spark error:", e)
+
+# ============================
+# 🔥 RUN R
+# ============================
+def run_r():
+    try:
+        subprocess.run(["Rscript", "HWSWprojectrscript.R"], check=True)
+        print("📊 R executed")
+    except Exception as e:
+        print("❌ R error:", e)
+
+# ============================
+# 🌐 ROUTES
+# ============================
 @app.route('/')
 def home():
-    return "Server Running"
+    return "🚀 FULL PIPELINE RUNNING"
 
 @app.route('/data', methods=['POST'])
 def receive_data():
     try:
         data = request.json
-        logging.info(f"Received data: {data}")
+        print("📥 Received:", data)
 
-        # Load CSV
-        df = pd.read_csv(DATA_FILE)
+        insert_into_db(data)
 
-        # Create new row
-        new_row = pd.DataFrame([{
-            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "location": data.get("location"),
-            "vehicle_density": data.get("vehicle_density"),
-            "avg_speed": data.get("avg_speed"),
-            "weather_code": data.get("weather_code"),
-            "distance": data.get("distance"),
-            "risk_level": data.get("risk_level")
-        }])
+        # 🔥 AUTOMATION PIPELINE
+        run_spark()
+        run_r()
 
-        # Append and save
-        df = pd.concat([df, new_row], ignore_index=True)
-        df.to_csv(DATA_FILE, index=False)
-
-        logging.info("CSV updated successfully")
-
-        # ============================
-        # 🔥 R SCRIPT (LOCAL ONLY)
-        # ============================
-        try:
-            subprocess.Popen(["Rscript", "HWSWprojectrscript.R"])
-            logging.info("R script triggered")
-        except Exception as e:
-            logging.warning(f"R skipped (cloud): {e}")
-
-        # ============================
-        # 🔥 SPARK SCRIPT (LOCAL ONLY)
-        # ============================
-        try:
-            subprocess.Popen(["python", "aspark.py"])
-            logging.info("Spark job triggered")
-        except Exception as e:
-            logging.warning(f"Spark skipped (cloud): {e}")
-
-        return {"status": "ok"}, 200
+        return {"status": "pipeline executed"}, 200
 
     except Exception as e:
-        logging.error(f"Error: {e}")
+        print("❌ ERROR:", e)
         return {"error": str(e)}, 500
+
+# ============================
+# 🚀 MAIN
+# ============================
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", port=5000)

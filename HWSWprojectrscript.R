@@ -1,52 +1,39 @@
 library(randomForest)
+library(RODBC)
 
 cat("Starting risk prediction...\n")
 
-# Load trained model
+con <- odbcDriverConnect(
+  "Driver={ODBC Driver 18 for SQL Server};
+   Server=raghav-traffic-server.database.windows.net;
+   Database=trafficdb;
+   Uid=Areebe07;
+   Pwd=your_password;
+   Encrypt=yes;
+   TrustServerCertificate=yes;"
+)
+
 model <- readRDS("accident_model.rds")
 
-# Check if live traffic file exists
-if (!file.exists("live_traffic.csv")) {
-  cat("⚠ live_traffic.csv not found yet\n")
-  quit(save="no")
-}
+traffic <- sqlQuery(con, "SELECT * FROM traffic")
 
-# Read traffic data
-traffic <- read.csv("live_traffic.csv", stringsAsFactors = FALSE)
-
-# Stop if file has no rows
 if (nrow(traffic) == 0) {
-  cat("⚠ No live traffic data yet. Waiting for ESP32 data...\n")
+  cat("No data\n")
   quit(save="no")
 }
 
-cat("Loaded", nrow(traffic), "rows of live traffic data\n")
-
-# Rename columns to match training data
 colnames(traffic)[colnames(traffic) == "vehicle_density"] <- "Vehicle_Count"
 colnames(traffic)[colnames(traffic) == "avg_speed"] <- "Vehicle_Speed"
 
-# Convert columns to numeric safely
 traffic$Vehicle_Count <- as.numeric(traffic$Vehicle_Count)
 traffic$Vehicle_Speed <- as.numeric(traffic$Vehicle_Speed)
 
-# Create congestion feature (same logic as training)
 traffic$Congestion_Level <- traffic$Vehicle_Count / max(traffic$Vehicle_Count, na.rm = TRUE)
 
-# Remove rows with missing values
 traffic <- na.omit(traffic)
 
-if (nrow(traffic) == 0) {
-  cat("⚠ All rows had NA after cleaning. Skipping prediction.\n")
-  quit(save="no")
-}
-
-cat("Predicting accident-related traffic risk...\n")
-
-# Predict traffic risk
 traffic$Predicted_Traffic <- predict(model, newdata = traffic)
 
-# Normalize risk score between 0 and 1
 max_val <- max(traffic$Predicted_Traffic, na.rm = TRUE)
 
 if (max_val == 0) {
@@ -55,7 +42,6 @@ if (max_val == 0) {
   traffic$Accident_Risk <- traffic$Predicted_Traffic / max_val
 }
 
-# Save output for Power BI
 write.csv(traffic, "risk_output.csv", row.names = FALSE)
 
-cat("✅ Risk prediction updated successfully!\n")
+cat("✅ R completed\n")
