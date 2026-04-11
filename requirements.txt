@@ -1,6 +1,6 @@
 flask
 pandas
-gunicornflask
+gunic
 pyodbc
 pandas
 python-dotenv
