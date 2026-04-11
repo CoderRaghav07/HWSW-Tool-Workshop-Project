@@ -7,16 +7,17 @@ import logging
 
 app = Flask(__name__)
 
-DATA_FILE = "live_traffic.csv"
+# 🔥 Use /tmp for cloud safety (Render/Azure)
+DATA_FILE = os.path.join("/tmp", "live_traffic.csv")
 
-# 🔥 Logging setup (important for DevOps)
+# 🔥 Logging (important for debugging + DevOps)
 logging.basicConfig(level=logging.INFO)
 
 # Create CSV if not exists
 if not os.path.exists(DATA_FILE):
     df = pd.DataFrame(columns=[
-        "time","location","vehicle_density",
-        "avg_speed","weather_code","distance","risk_level"
+        "time", "location", "vehicle_density",
+        "avg_speed", "weather_code", "distance", "risk_level"
     ])
     df.to_csv(DATA_FILE, index=False)
 
@@ -30,8 +31,10 @@ def receive_data():
         data = request.json
         logging.info(f"Received data: {data}")
 
+        # Load CSV
         df = pd.read_csv(DATA_FILE)
 
+        # Create new row
         new_row = pd.DataFrame([{
             "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "location": data.get("location"),
@@ -42,33 +45,29 @@ def receive_data():
             "risk_level": data.get("risk_level")
         }])
 
-        # ✅ Save to CSV
+        # Append and save
         df = pd.concat([df, new_row], ignore_index=True)
         df.to_csv(DATA_FILE, index=False)
 
         logging.info("CSV updated successfully")
 
-        # 🔥 AUTO RUN R SCRIPT
+        # ============================
+        # 🔥 R SCRIPT (LOCAL ONLY)
+        # ============================
         try:
-            r_result = subprocess.run(
-                ["Rscript", "predict_risk.R"],
-                capture_output=True,
-                text=True
-            )
-            logging.info("R script executed")
+            subprocess.Popen(["Rscript", "HWSWprojectrscript.R"])
+            logging.info("R script triggered")
         except Exception as e:
-            logging.error(f"R error: {e}")
+            logging.warning(f"R skipped (cloud): {e}")
 
-        # 🔥 AUTO RUN SPARK (OPTIONAL BUT GOOD FOR MARKS)
+        # ============================
+        # 🔥 SPARK SCRIPT (LOCAL ONLY)
+        # ============================
         try:
-            spark_result = subprocess.run(
-                ["spark-submit", "spark_job.py"],
-                capture_output=True,
-                text=True
-            )
-            logging.info("Spark job executed")
+            subprocess.Popen(["python", "aspark.py"])
+            logging.info("Spark job triggered")
         except Exception as e:
-            logging.warning(f"Spark skipped: {e}")
+            logging.warning(f"Spark skipped (cloud): {e}")
 
         return {"status": "ok"}, 200
 
