@@ -1,0 +1,18 @@
+Timestamp,Location,Vehicle_Count,Weather,Peak_Hour,Accident_Risk
+2026-02-02 01:30:51,Highway,17,Storm,0,High
+2026-02-02 01:30:53,City Center,17,Storm,1,High
+2026-02-02 01:30:55,Highway,16,Fog,1,High
+2026-02-02 01:30:57,City Center,11,Storm,1,High
+2026-02-02 01:30:59,Residential,23,Storm,1,High
+2026-02-02 01:31:01,City Center,2,Storm,1,High
+2026-02-02 01:31:03,City Center,6,Storm,0,High
+2026-02-02 01:31:05,Highway,4,Clear,1,High
+2026-02-02 01:31:07,Residential,1,Fog,0,High
+2026-02-02 01:31:09,Highway,15,Storm,1,High
+2026-02-02 01:31:11,Industrial,22,Fog,0,High
+2026-02-02 01:31:13,Highway,9,Fog,1,High
+2026-02-02 01:31:15,Industrial,21,Clear,0,High
+2026-02-02 01:31:17,Residential,14,Storm,1,High
+2026-02-02 01:31:19,City Center,6,Clear,1,High
+2026-02-02 01:31:21,Highway,14,Storm,0,High
+2026-02-02 01:31:23,Industrial,23,Fog,1,Low

@@ -1,0 +1,55 @@
+library(randomForest)
+
+cat("Starting risk prediction...\n")
+
+# Load trained model
+model <- readRDS("accident_model.rds")
+
+# Check if live traffic file exists
+if (!file.exists("live_traffic.csv")) {
+  cat("⚠ live_traffic.csv not found yet\n")
+  quit(save="no")
+}
+
+traffic <- read.csv("live_traffic.csv", stringsAsFactors = FALSE)
+
+# Stop if file has no rows
+if (nrow(traffic) == 0) {
+  cat("⚠ No live traffic data yet. Waiting for ESP32 data...\n")
+  quit(save="no")
+}
+
+cat("Loaded", nrow(traffic), "rows of live traffic data\n")
+
+# Rename columns to match training data
+colnames(traffic)[colnames(traffic) == "vehicle_density"] <- "Vehicle_Count"
+colnames(traffic)[colnames(traffic) == "avg_speed"] <- "Vehicle_Speed"
+
+# Convert to numeric safely
+traffic$Vehicle_Count <- as.numeric(as.character(traffic$Vehicle_Count))
+traffic$Vehicle_Speed <- as.numeric(as.character(traffic$Vehicle_Speed))
+
+# Create congestion feature (same logic as training)
+traffic$Congestion_Level <- traffic$Vehicle_Count / max(traffic$Vehicle_Count, na.rm = TRUE)
+traffic$Congestion_Level <- as.numeric(traffic$Congestion_Level)
+
+# Remove rows with missing values
+traffic <- na.omit(traffic)
+
+if (nrow(traffic) == 0) {
+  cat("⚠ All rows had NA after cleaning. Skipping prediction.\n")
+  quit(save="no")
+}
+
+cat("Predicting accident-related traffic risk...\n")
+
+# Predict
+traffic$Predicted_Traffic <- predict(model, traffic)
+
+# Normalize risk score 0–1
+traffic$Accident_Risk <- traffic$Predicted_Traffic / max(traffic$Predicted_Traffic)
+
+# Save output for Power BI
+write.csv(traffic, "risk_output.csv", row.names = FALSE)
+
+cat("✅Risk prediction updated successfully!\n")
