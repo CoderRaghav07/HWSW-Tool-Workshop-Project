@@ -8,7 +8,7 @@ con <- odbcDriverConnect(
    Server=raghav-traffic-server.database.windows.net;
    Database=trafficdb;
    Uid=Areebe07;
-   Pwd=your_password;
+   Pwd=HWSWProject@CACSC603;
    Encrypt=yes;
    TrustServerCertificate=yes;"
 )
