@@ -1,7 +1,8 @@
 flask
 pandas
 gunicorn
-pyodbc
+supabase
 pandas
 python-dotenv
 pyspark
+psycopg2-binary
