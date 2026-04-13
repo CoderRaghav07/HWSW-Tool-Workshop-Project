@@ -34,9 +34,8 @@ BASE_URL = "https://hwsw-tool-workshop-project.onrender.com"
 run_count = 0
 
 
-# ============================================================
-# STEP 0 — PING RENDER (keep alive)
-# ============================================================
+
+# PINGING RENDER 
 def ping_render():
     """Keep Render awake so it never sleeps"""
     logging.info("Pinging Render to keep it awake...")
@@ -47,9 +46,7 @@ def ping_render():
         logging.warning(f"  Render ping failed: {e}")
 
 
-# ============================================================
-# STEP 1 — UPDATE CSVs FROM SUPABASE VIA RENDER API
-# ============================================================
+
 def update_csvs():
     logging.info("Updating CSVs from Supabase...")
 
@@ -76,9 +73,6 @@ def update_csvs():
             logging.warning(f"  {filename} failed: {e}")
 
 
-# ============================================================
-# STEP 2 — RUN R SCRIPT
-# ============================================================
 def run_r_script():
     logging.info("Running R script...")
     try:
@@ -98,9 +92,9 @@ def run_r_script():
         logging.warning(f"  R script failed: {e}")
 
 
-# ============================================================
-# STEP 3 — RUN SPARK
-# ============================================================
+
+
+
 def run_spark():
     logging.info("Running Spark job...")
     try:
@@ -120,9 +114,7 @@ def run_spark():
         logging.warning(f"  Spark failed: {e}")
 
 
-# ============================================================
-# FULL PIPELINE
-# ============================================================
+
 def run_pipeline():
     global run_count
     run_count += 1
@@ -140,9 +132,7 @@ def run_pipeline():
     print()
 
 
-# ============================================================
-# MAIN LOOP
-# ============================================================
+
 if __name__ == "__main__":
     print("=" * 55)
     print("   Traffic Risk Auto Pipeline")
@@ -152,10 +142,10 @@ if __name__ == "__main__":
     print("=" * 55)
     print()
 
-    # Run immediately on start
+  
     run_pipeline()
 
-    # Then repeat every INTERVAL_SECONDS
+  
     while True:
         time.sleep(INTERVAL_SECONDS)
         run_pipeline()
